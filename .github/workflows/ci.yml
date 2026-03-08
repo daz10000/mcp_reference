@@ -16,8 +16,8 @@ jobs:
         with:
           dotnet-version: '9.0.x'
       - name: Restore
-        run: dotnet restore
+        run: dotnet restore mcp_reference.sln
       - name: Build
-        run: dotnet build src/mcp_reference.fsproj -c Debug --no-restore
+        run: dotnet build mcp_reference.sln -c Debug --no-restore
       - name: Test
         run: dotnet test tests/mcp_reference.Tests.fsproj -c Debug --no-build
