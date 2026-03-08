@@ -14,8 +14,8 @@ module Web =
 <!doctype html>
 <html>
 <head>
-    <meta charset=\"utf-8\" />
-    <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>MCP Chat</title>
     <style>
         body { font-family: Segoe UI, sans-serif; margin: 0; background: #f6f7fb; }
@@ -30,13 +30,13 @@ module Web =
     </style>
 </head>
 <body>
-    <div class=\"wrap\">
+    <div class="wrap">
         <h2>MCP Reference Chat</h2>
         <p>Chat with an LLM loop that can call server tools (Echo, Add) via MCP registry.</p>
-        <div id=\"log\"></div>
-        <div class=\"row\">
-            <textarea id=\"prompt\" placeholder=\"Ask something, e.g. 'use Add to compute 7 + 9'\"></textarea>
-            <button id=\"send\">Send</button>
+        <div id="log"></div>
+        <div class="row">
+            <textarea id="prompt" placeholder="Ask something, e.g. 'use Add to compute 7 + 9'"></textarea>
+            <button id="send">Send</button>
         </div>
     </div>
 <script>
@@ -73,13 +73,15 @@ async function send() {
     }
 }
 
-sendBtn.addEventListener('click', send);
-promptEl.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        send();
-    }
-});
+if (sendBtn && promptEl) {
+    sendBtn.addEventListener('click', send);
+    promptEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            send();
+        }
+    });
+}
 </script>
 </body>
 </html>

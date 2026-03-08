@@ -21,26 +21,23 @@ module ChatLoop =
         | "" -> fallback
         | v -> v
 
-    let private toolsSchemaJson =
-        """
-[
-  {
-    "type": "function",
-    "function": {
-      "name": "call_mcp_tool",
-      "description": "Call a server MCP tool by name with JSON arguments.",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "name": { "type": "string" },
-          "arguments": { "type": "object" }
-        },
-        "required": ["name", "arguments"]
-      }
-    }
-  }
-]
-"""
+    let private buildToolsNode () : JsonArray =
+        let tools = JsonArray()
+
+        for t in Registry.listLlmDescriptors() do
+            let parameters = JsonNode.Parse(t.ParametersJson)
+            let toolNode =
+                JsonSerializer.SerializeToNode(
+                    {| ``type`` = "function"
+                       ``function`` =
+                        {| name = t.Name
+                           description = t.Description
+                           parameters = parameters |} |}
+                )
+
+            tools.Add(toolNode)
+
+        tools
 
     let private invokeTool (toolName: string) (argumentsJson: option<JsonElement>) : string =
         let argObj =
@@ -53,7 +50,7 @@ module ChatLoop =
             match res with
             | :? string as s -> s
             | :? int as i -> string i
-            | :? MCPReference.Core.Protocol.Message as m -> JsonSerializer.Serialize(m)
+            | :? MCPReference.Core.Protocol.Message as m -> m.Text
             | _ -> JsonSerializer.Serialize(res)
         | None -> sprintf "Tool '%s' not found." toolName
 
@@ -65,7 +62,7 @@ module ChatLoop =
             else
                 let endpoint = getEnv "OPENAI_BASE_URL" "https://api.openai.com/v1/chat/completions"
                 let model = getEnv "OPENAI_MODEL" "gpt-4.1-mini"
-                let toolsNode = JsonNode.Parse(toolsSchemaJson)
+                let toolsNode = buildToolsNode ()
 
                 let payloadNode : JsonNode =
                     JsonSerializer.SerializeToNode(
@@ -88,27 +85,13 @@ module ChatLoop =
                     return Ok body
         }
 
-    let private parseToolArguments (raw: string) : option<string * option<JsonElement>> =
+    let private parseToolArguments (raw: string) : option<JsonElement> =
         if String.IsNullOrWhiteSpace(raw) then
             None
         else
             try
                 use doc = JsonDocument.Parse(raw)
-                let root = doc.RootElement
-                let mutable nameProp = Unchecked.defaultof<JsonElement>
-                let mutable argsProp = Unchecked.defaultof<JsonElement>
-
-                if root.TryGetProperty("name", &nameProp) && nameProp.ValueKind = JsonValueKind.String then
-                    let name = nameProp.GetString()
-                    let args =
-                        if root.TryGetProperty("arguments", &argsProp) then
-                            Some argsProp
-                        else
-                            None
-
-                    Some(name, args)
-                else
-                    None
+                Some (doc.RootElement.Clone())
             with _ ->
                 None
 
@@ -116,7 +99,7 @@ module ChatLoop =
         task {
             let messages = JsonArray()
 
-            messages.Add(JsonSerializer.SerializeToNode({| role = "system"; content = "You are a concise assistant. When useful, call tools via call_mcp_tool. Available tools include Echo and Add." |}))
+            messages.Add(JsonSerializer.SerializeToNode({| role = "system"; content = "You are a concise assistant. Use tools when useful. Tool names and parameter schemas are authoritative." |}))
             messages.Add(JsonSerializer.SerializeToNode({| role = "user"; content = prompt |}))
 
             let mutable answer = ""
@@ -180,12 +163,9 @@ module ChatLoop =
                                             ""
 
                                     let toolResult =
-                                        if fnName = "call_mcp_tool" then
-                                            match parseToolArguments fnArgsRaw with
-                                            | Some(toolName, toolArgs) -> invokeTool toolName toolArgs
-                                            | None -> "Tool call missing name or arguments."
-                                        else
-                                            sprintf "Unknown tool function: %s" fnName
+                                        match parseToolArguments fnArgsRaw with
+                                        | Some toolArgs -> invokeTool fnName (Some toolArgs)
+                                        | None -> sprintf "Tool '%s' arguments could not be parsed." fnName
 
                                     messages.Add(JsonSerializer.SerializeToNode({| role = "tool"; tool_call_id = id; content = toolResult |}))
                         else
