@@ -8,6 +8,9 @@
   <ItemGroup>
     <Compile Include="Core\Protocol.fs" />
     <Compile Include="Core\Echo.fs" />
+    <Compile Include="Core\TypedTools.fs" />
+    <Compile Include="Core\McpTools.fs" />
+    <Compile Include="Core\Registry.fs" />
     <Compile Include="Http\Hubs\SignalRHub.fs" />
     <Compile Include="Http\Web.fs" />
     <Compile Include="Program.fs" />
@@ -19,6 +22,7 @@
 
   <ItemGroup>
     <PackageReference Include="Giraffe" Version="6.0.0" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="1.0.0" />
   </ItemGroup>
 
 </Project>

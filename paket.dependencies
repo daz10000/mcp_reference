@@ -1,5 +1,6 @@
 source https://api.nuget.org/v3/index.json
 
 nuget Giraffe 6.0.0
+nuget ModelContextProtocol.AspNetCore 1.0.0
 
 # Add other packages here as needed (SignalR is provided by Microsoft.AspNetCore.App framework ref)
