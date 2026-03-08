@@ -10,8 +10,22 @@ module ChatLoop =
     open System.Threading.Tasks
     open MCPReference.Core
 
-    type ChatRequest = { Prompt: string }
-    type ChatResponse = { Reply: string }
+    type ChatHistoryItem =
+        { Role: string
+          Content: string }
+
+    type ChatRequest =
+        { Prompt: string
+          History: ChatHistoryItem [] }
+
+    type ToolCallTrace =
+        { Name: string
+          Arguments: string
+          Result: string }
+
+    type ChatResponse =
+        { Reply: string
+          ToolCalls: ToolCallTrace [] }
 
     let private http = new HttpClient()
 
@@ -95,93 +109,112 @@ module ChatLoop =
             with _ ->
                 None
 
-    let run (prompt: string) : Task<string> =
+    let run (req: ChatRequest) : Task<ChatResponse> =
         task {
             let messages = JsonArray()
+            let history = if isNull req.History then [||] else req.History
 
             messages.Add(JsonSerializer.SerializeToNode({| role = "system"; content = "You are a concise assistant. Use tools when useful. Tool names and parameter schemas are authoritative." |}))
-            messages.Add(JsonSerializer.SerializeToNode({| role = "user"; content = prompt |}))
+            for item in history do
+                let role = if String.IsNullOrWhiteSpace(item.Role) then "user" else item.Role.Trim().ToLowerInvariant()
+                if (role = "user" || role = "assistant") && not (String.IsNullOrWhiteSpace(item.Content)) then
+                    messages.Add(JsonSerializer.SerializeToNode({| role = role; content = item.Content |}))
 
-            let mutable answer = ""
-            let mutable doneLoop = false
-            let mutable turns = 0
+            messages.Add(JsonSerializer.SerializeToNode({| role = "user"; content = req.Prompt |}))
 
-            while not doneLoop && turns < 6 do
-                turns <- turns + 1
-                let! llm = postChatCompletion messages
+            let rec runLoop (turn: int) (toolCallsAcc: ToolCallTrace list) : Task<string * ToolCallTrace list> =
+                task {
+                    if turn >= 6 then
+                        return ("No response.", toolCallsAcc)
+                    else
+                        let! llm = postChatCompletion messages
 
-                match llm with
-                | Error e ->
-                    answer <- e
-                    doneLoop <- true
-                | Ok raw ->
-                    try
-                        use doc = JsonDocument.Parse(raw)
-                        let root = doc.RootElement
-                        let msg = root.GetProperty("choices").[0].GetProperty("message")
+                        match llm with
+                        | Error e ->
+                            return (e, toolCallsAcc)
+                        | Ok raw ->
+                            try
+                                use doc = JsonDocument.Parse(raw)
+                                let root = doc.RootElement
+                                let msg = root.GetProperty("choices").[0].GetProperty("message")
 
-                        let mutable contentProp = Unchecked.defaultof<JsonElement>
-                        let content =
-                            if msg.TryGetProperty("content", &contentProp) && contentProp.ValueKind = JsonValueKind.String then
-                                contentProp.GetString()
-                            else
-                                ""
-
-                        let mutable toolCallsProp = Unchecked.defaultof<JsonElement>
-                        let hasToolCalls =
-                            msg.TryGetProperty("tool_calls", &toolCallsProp)
-                            && toolCallsProp.ValueKind = JsonValueKind.Array
-                            && toolCallsProp.GetArrayLength() > 0
-
-                        if hasToolCalls then
-                            let toolCallsNode = JsonNode.Parse(toolCallsProp.GetRawText())
-                            messages.Add(JsonSerializer.SerializeToNode({| role = "assistant"; content = content; tool_calls = toolCallsNode |}))
-
-                            for tc in toolCallsProp.EnumerateArray() do
-                                let mutable idProp = Unchecked.defaultof<JsonElement>
-                                let id =
-                                    if tc.TryGetProperty("id", &idProp) && idProp.ValueKind = JsonValueKind.String then
-                                        idProp.GetString()
+                                let mutable contentProp = Unchecked.defaultof<JsonElement>
+                                let content =
+                                    if msg.TryGetProperty("content", &contentProp) && contentProp.ValueKind = JsonValueKind.String then
+                                        contentProp.GetString()
                                     else
                                         ""
 
-                                let mutable fnProp = Unchecked.defaultof<JsonElement>
-                                if tc.TryGetProperty("function", &fnProp) then
-                                    let mutable fnNameProp = Unchecked.defaultof<JsonElement>
-                                    let mutable fnArgsProp = Unchecked.defaultof<JsonElement>
+                                let mutable toolCallsProp = Unchecked.defaultof<JsonElement>
+                                let hasToolCalls =
+                                    msg.TryGetProperty("tool_calls", &toolCallsProp)
+                                    && toolCallsProp.ValueKind = JsonValueKind.Array
+                                    && toolCallsProp.GetArrayLength() > 0
 
-                                    let fnName =
-                                        if fnProp.TryGetProperty("name", &fnNameProp) && fnNameProp.ValueKind = JsonValueKind.String then
-                                            fnNameProp.GetString()
-                                        else
-                                            ""
+                                if hasToolCalls then
+                                    let toolCallsNode = JsonNode.Parse(toolCallsProp.GetRawText())
+                                    messages.Add(JsonSerializer.SerializeToNode({| role = "assistant"; content = content; tool_calls = toolCallsNode |}))
 
-                                    let fnArgsRaw =
-                                        if fnProp.TryGetProperty("arguments", &fnArgsProp) && fnArgsProp.ValueKind = JsonValueKind.String then
-                                            fnArgsProp.GetString()
-                                        else
-                                            ""
+                                    let newToolCalls =
+                                        [ for tc in toolCallsProp.EnumerateArray() do
+                                            let mutable idProp = Unchecked.defaultof<JsonElement>
+                                            let id =
+                                                if tc.TryGetProperty("id", &idProp) && idProp.ValueKind = JsonValueKind.String then
+                                                    idProp.GetString()
+                                                else
+                                                    ""
 
-                                    let toolResult =
-                                        match parseToolArguments fnArgsRaw with
-                                        | Some toolArgs -> invokeTool fnName (Some toolArgs)
-                                        | None -> sprintf "Tool '%s' arguments could not be parsed." fnName
+                                            let mutable fnProp = Unchecked.defaultof<JsonElement>
+                                            if tc.TryGetProperty("function", &fnProp) then
+                                                let mutable fnNameProp = Unchecked.defaultof<JsonElement>
+                                                let mutable fnArgsProp = Unchecked.defaultof<JsonElement>
 
-                                    messages.Add(JsonSerializer.SerializeToNode({| role = "tool"; tool_call_id = id; content = toolResult |}))
-                        else
-                            answer <-
-                                if String.IsNullOrWhiteSpace(content) then
-                                    "No assistant reply was produced."
+                                                let fnName =
+                                                    if fnProp.TryGetProperty("name", &fnNameProp) && fnNameProp.ValueKind = JsonValueKind.String then
+                                                        fnNameProp.GetString()
+                                                    else
+                                                        ""
+
+                                                let fnArgsRaw =
+                                                    if fnProp.TryGetProperty("arguments", &fnArgsProp) && fnArgsProp.ValueKind = JsonValueKind.String then
+                                                        fnArgsProp.GetString()
+                                                    else
+                                                        ""
+
+                                                let toolResult =
+                                                    match parseToolArguments fnArgsRaw with
+                                                    | Some toolArgs -> invokeTool fnName (Some toolArgs)
+                                                    | None -> sprintf "Tool '%s' arguments could not be parsed." fnName
+
+                                                messages.Add(JsonSerializer.SerializeToNode({| role = "tool"; tool_call_id = id; content = toolResult |}))
+
+                                                yield
+                                                    { Name = fnName
+                                                      Arguments = fnArgsRaw
+                                                      Result = toolResult } ]
+
+                                    return! runLoop (turn + 1) (toolCallsAcc @ newToolCalls)
                                 else
-                                    content
-                            doneLoop <- true
-                    with ex ->
-                        answer <- sprintf "Failed to parse LLM response: %s" ex.Message
-                        doneLoop <- true
+                                    let reply =
+                                        if String.IsNullOrWhiteSpace(content) then
+                                            "No assistant reply was produced."
+                                        else
+                                            content
 
-            return
+                                    return (reply, toolCallsAcc)
+                            with ex ->
+                                return (sprintf "Failed to parse LLM response: %s" ex.Message, toolCallsAcc)
+                }
+
+            let! answer, toolCalls = runLoop 0 []
+
+            let finalReply =
                 if String.IsNullOrWhiteSpace(answer) then
                     "No response."
                 else
                     answer
+
+            return
+                { Reply = finalReply
+                  ToolCalls = toolCalls |> List.toArray }
         }

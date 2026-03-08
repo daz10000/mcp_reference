@@ -24,6 +24,7 @@ module Web =
         .msg { margin: 10px 0; padding: 10px 12px; border-radius: 10px; white-space: pre-wrap; }
         .u { background: #e8f1ff; }
         .a { background: #f1f5f3; }
+        .t { background: #fff7e6; font-size: 13px; }
         .row { margin-top: 12px; display: flex; gap: 8px; }
         textarea { flex: 1; min-height: 70px; padding: 10px; }
         button { padding: 10px 14px; }
@@ -43,6 +44,7 @@ module Web =
 const log = document.getElementById('log');
 const promptEl = document.getElementById('prompt');
 const sendBtn = document.getElementById('send');
+const history = [];
 
 function append(cls, text) {
     const d = document.createElement('div');
@@ -62,10 +64,17 @@ async function send() {
         const res = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt })
+            body: JSON.stringify({ prompt, history })
         });
         const data = await res.json();
-        append('a', 'Assistant: ' + (data.reply || 'No response'));
+        const reply = data.reply || 'No response';
+        append('a', 'Assistant: ' + reply);
+        history.push({ role: 'user', content: prompt });
+        history.push({ role: 'assistant', content: reply });
+        if (Array.isArray(data.toolCalls) && data.toolCalls.length > 0) {
+            const called = data.toolCalls.map(t => t.name).join(', ');
+            append('t', 'Tools called: ' + called);
+        }
     } catch (e) {
         append('a', 'Assistant: Request failed.');
     } finally {
@@ -93,8 +102,7 @@ if (sendBtn && promptEl) {
             POST >=> route "/api/chat" >=> bindJson<ChatRequest> (fun req ->
                 fun next ctx ->
                     task {
-                        let! reply = ChatLoop.run req.Prompt
-                        let payload : ChatResponse = { Reply = reply }
+                        let! payload = ChatLoop.run req
                         return! json payload next ctx
                     }
             )

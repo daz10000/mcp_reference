@@ -7,6 +7,8 @@ Reference MCP server implemented in F# on ASP.NET Core with:
 - typed HTTP sample endpoints (`/mcp/echo`, `/mcp/add`)
 - simple web chat UI (`/`) backed by an LLM tool-calling loop (`/api/chat`)
 
+![UI Example](docs/ui_example.png)
+
 ## Requirements
 
 - .NET SDK 9.0+
