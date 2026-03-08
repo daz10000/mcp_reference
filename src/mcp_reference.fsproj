@@ -12,6 +12,7 @@
     <Compile Include="Core\McpTools.fs" />
     <Compile Include="Core\Registry.fs" />
     <Compile Include="Http\Hubs\SignalRHub.fs" />
+    <Compile Include="Http\ChatLoop.fs" />
     <Compile Include="Http\Web.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

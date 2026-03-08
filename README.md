@@ -5,6 +5,7 @@ Reference MCP server implemented in F# on ASP.NET Core with:
 - official `ModelContextProtocol.AspNetCore` middleware (`/mcp`)
 - SignalR hub (`/hub`) for realtime interactions
 - typed HTTP sample endpoints (`/mcp/echo`, `/mcp/add`)
+- simple web chat UI (`/`) backed by an LLM tool-calling loop (`/api/chat`)
 
 ## Requirements
 
@@ -20,6 +21,15 @@ dotnet run --project src/mcp_reference.fsproj
 
 Server listens on `http://127.0.0.1:5000`.
 
+Set OpenAI environment variables for chat:
+
+```powershell
+$env:OPENAI_API_KEY = "<your-key>"
+$env:OPENAI_MODEL = "gpt-4.1-mini"
+# optional
+$env:OPENAI_BASE_URL = "https://api.openai.com/v1/chat/completions"
+```
+
 ## Endpoints
 
 - `POST /mcp` — official MCP streamable HTTP endpoint (via `MapMcp("/mcp")`)
@@ -29,6 +39,7 @@ Server listens on `http://127.0.0.1:5000`.
 - `POST /mcp/echo` — typed sample tool endpoint (`{ "Text": "hi" }`)
 - `POST /mcp/add` — typed sample tool endpoint (`{ "A": 1, "B": 2 }`)
 - `GET/POST /hub` — SignalR hub endpoint
+- `POST /api/chat` — chat endpoint used by home page UI
 
 ## MCP tools exposed
 
