@@ -45,6 +45,22 @@ dotnet test tests/mcp_reference.Tests.fsproj -c Debug
 
 Includes integration coverage for root HTTP, typed endpoints, SignalR, and MCP middleware mapping.
 
+## MCPInspector quick connect
+
+1. Run the server:
+
+```powershell
+dotnet run --project src/mcp_reference.fsproj
+```
+
+2. Point MCPInspector to:
+
+- `http://127.0.0.1:5000/mcp`
+
+3. Connect and call `tools/list`.
+
+Expected: tool list includes `Echo` and `Add`.
+
 ## Notes on dependencies
 
 - NuGet references are in `src/mcp_reference.fsproj`

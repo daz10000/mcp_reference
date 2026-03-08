@@ -16,6 +16,23 @@ Tools are discovered from `src/Core/McpTools.fs` via attributes:
 
 ## Manual probe examples
 
+## MCPInspector quick connect
+
+1. Start the server:
+
+```powershell
+dotnet run --project src/mcp_reference.fsproj
+```
+
+2. In MCPInspector, configure a Streamable HTTP server:
+
+- URL: `http://127.0.0.1:5000/mcp`
+- Method: `POST`
+
+3. Connect and run `tools/list`.
+
+Expected result: the server responds and lists tool entries including `Echo` and `Add`.
+
 ### MCP endpoint mapped check
 
 A basic probe that should return **not 404** (typically `406` for malformed/partial request):
