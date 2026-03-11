@@ -122,91 +122,92 @@ module ChatLoop =
 
             messages.Add(JsonSerializer.SerializeToNode({| role = "user"; content = req.Prompt |}))
 
-            let rec runLoop (turn: int) (toolCallsAcc: ToolCallTrace list) : Task<string * ToolCallTrace list> =
-                task {
-                    if turn >= 6 then
-                        return ("No response.", toolCallsAcc)
-                    else
-                        let! llm = postChatCompletion messages
+            let mutable turn = 0
+            let mutable doneLoop = false
+            let mutable answer = "No response."
+            let mutable toolCalls = []
 
-                        match llm with
-                        | Error e ->
-                            return (e, toolCallsAcc)
-                        | Ok raw ->
-                            try
-                                use doc = JsonDocument.Parse(raw)
-                                let root = doc.RootElement
-                                let msg = root.GetProperty("choices").[0].GetProperty("message")
+            while not doneLoop && turn < 6 do
+                let! llm = postChatCompletion messages
 
-                                let mutable contentProp = Unchecked.defaultof<JsonElement>
-                                let content =
-                                    if msg.TryGetProperty("content", &contentProp) && contentProp.ValueKind = JsonValueKind.String then
-                                        contentProp.GetString()
-                                    else
-                                        ""
+                match llm with
+                | Error e ->
+                    answer <- e
+                    doneLoop <- true
+                | Ok raw ->
+                    try
+                        use doc = JsonDocument.Parse(raw)
+                        let root = doc.RootElement
+                        let msg = root.GetProperty("choices").[0].GetProperty("message")
 
-                                let mutable toolCallsProp = Unchecked.defaultof<JsonElement>
-                                let hasToolCalls =
-                                    msg.TryGetProperty("tool_calls", &toolCallsProp)
-                                    && toolCallsProp.ValueKind = JsonValueKind.Array
-                                    && toolCallsProp.GetArrayLength() > 0
+                        let mutable contentProp = Unchecked.defaultof<JsonElement>
+                        let content =
+                            if msg.TryGetProperty("content", &contentProp) && contentProp.ValueKind = JsonValueKind.String then
+                                contentProp.GetString()
+                            else
+                                ""
 
-                                if hasToolCalls then
-                                    let toolCallsNode = JsonNode.Parse(toolCallsProp.GetRawText())
-                                    messages.Add(JsonSerializer.SerializeToNode({| role = "assistant"; content = content; tool_calls = toolCallsNode |}))
+                        let mutable toolCallsProp = Unchecked.defaultof<JsonElement>
+                        let hasToolCalls =
+                            msg.TryGetProperty("tool_calls", &toolCallsProp)
+                            && toolCallsProp.ValueKind = JsonValueKind.Array
+                            && toolCallsProp.GetArrayLength() > 0
 
-                                    let newToolCalls =
-                                        [ for tc in toolCallsProp.EnumerateArray() do
-                                            let mutable idProp = Unchecked.defaultof<JsonElement>
-                                            let id =
-                                                if tc.TryGetProperty("id", &idProp) && idProp.ValueKind = JsonValueKind.String then
-                                                    idProp.GetString()
-                                                else
-                                                    ""
+                        if hasToolCalls then
+                            let toolCallsNode = JsonNode.Parse(toolCallsProp.GetRawText())
+                            messages.Add(JsonSerializer.SerializeToNode({| role = "assistant"; content = content; tool_calls = toolCallsNode |}))
 
-                                            let mutable fnProp = Unchecked.defaultof<JsonElement>
-                                            if tc.TryGetProperty("function", &fnProp) then
-                                                let mutable fnNameProp = Unchecked.defaultof<JsonElement>
-                                                let mutable fnArgsProp = Unchecked.defaultof<JsonElement>
-
-                                                let fnName =
-                                                    if fnProp.TryGetProperty("name", &fnNameProp) && fnNameProp.ValueKind = JsonValueKind.String then
-                                                        fnNameProp.GetString()
-                                                    else
-                                                        ""
-
-                                                let fnArgsRaw =
-                                                    if fnProp.TryGetProperty("arguments", &fnArgsProp) && fnArgsProp.ValueKind = JsonValueKind.String then
-                                                        fnArgsProp.GetString()
-                                                    else
-                                                        ""
-
-                                                let toolResult =
-                                                    match parseToolArguments fnArgsRaw with
-                                                    | Some toolArgs -> invokeTool fnName (Some toolArgs)
-                                                    | None -> sprintf "Tool '%s' arguments could not be parsed." fnName
-
-                                                messages.Add(JsonSerializer.SerializeToNode({| role = "tool"; tool_call_id = id; content = toolResult |}))
-
-                                                yield
-                                                    { Name = fnName
-                                                      Arguments = fnArgsRaw
-                                                      Result = toolResult } ]
-
-                                    return! runLoop (turn + 1) (toolCallsAcc @ newToolCalls)
-                                else
-                                    let reply =
-                                        if String.IsNullOrWhiteSpace(content) then
-                                            "No assistant reply was produced."
+                            let newToolCalls =
+                                [ for tc in toolCallsProp.EnumerateArray() do
+                                    let mutable idProp = Unchecked.defaultof<JsonElement>
+                                    let id =
+                                        if tc.TryGetProperty("id", &idProp) && idProp.ValueKind = JsonValueKind.String then
+                                            idProp.GetString()
                                         else
-                                            content
+                                            ""
 
-                                    return (reply, toolCallsAcc)
-                            with ex ->
-                                return (sprintf "Failed to parse LLM response: %s" ex.Message, toolCallsAcc)
-                }
+                                    let mutable fnProp = Unchecked.defaultof<JsonElement>
+                                    if tc.TryGetProperty("function", &fnProp) then
+                                        let mutable fnNameProp = Unchecked.defaultof<JsonElement>
+                                        let mutable fnArgsProp = Unchecked.defaultof<JsonElement>
 
-            let! answer, toolCalls = runLoop 0 []
+                                        let fnName =
+                                            if fnProp.TryGetProperty("name", &fnNameProp) && fnNameProp.ValueKind = JsonValueKind.String then
+                                                fnNameProp.GetString()
+                                            else
+                                                ""
+
+                                        let fnArgsRaw =
+                                            if fnProp.TryGetProperty("arguments", &fnArgsProp) && fnArgsProp.ValueKind = JsonValueKind.String then
+                                                fnArgsProp.GetString()
+                                            else
+                                                ""
+
+                                        let toolResult =
+                                            match parseToolArguments fnArgsRaw with
+                                            | Some toolArgs -> invokeTool fnName (Some toolArgs)
+                                            | None -> sprintf "Tool '%s' arguments could not be parsed." fnName
+
+                                        messages.Add(JsonSerializer.SerializeToNode({| role = "tool"; tool_call_id = id; content = toolResult |}))
+
+                                        yield
+                                            { Name = fnName
+                                              Arguments = fnArgsRaw
+                                              Result = toolResult } ]
+
+                            toolCalls <- toolCalls @ newToolCalls
+                            turn <- turn + 1
+                        else
+                            answer <-
+                                if String.IsNullOrWhiteSpace(content) then
+                                    "No assistant reply was produced."
+                                else
+                                    content
+
+                            doneLoop <- true
+                    with ex ->
+                        answer <- sprintf "Failed to parse LLM response: %s" ex.Message
+                        doneLoop <- true
 
             let finalReply =
                 if String.IsNullOrWhiteSpace(answer) then

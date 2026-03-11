@@ -16,6 +16,7 @@ Reference MCP server implemented in F# on ASP.NET Core with:
 ## Quick start
 
 ```powershell
+dotnet tool restore
 dotnet restore src/mcp_reference.fsproj
 dotnet build src/mcp_reference.fsproj -c Debug
 dotnet run --project src/mcp_reference.fsproj
@@ -69,6 +70,7 @@ The official MCP middleware discovers resources from `src/Core/McpResources.fs`:
 ## Tests
 
 ```powershell
+dotnet tool restore
 dotnet test tests/mcp_reference.Tests.fsproj -c Debug
 ```
 
@@ -92,5 +94,7 @@ Expected: tool list includes `Echo` and `Add`.
 
 ## Notes on dependencies
 
-- NuGet references are in `src/mcp_reference.fsproj`
-- Paket references are in `paket.dependencies` and `src/paket.references`
+- All package dependencies are managed by Paket
+- Top-level packages and versions are declared in `paket.dependencies`
+- Per-project package references are listed in `src/paket.references` and `tests/paket.references`
+- The resolved dependency graph is locked in `paket.lock`
