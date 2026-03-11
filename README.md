@@ -49,6 +49,22 @@ The official MCP middleware discovers tools from `src/Core/McpTools.fs`:
 
 - `Echo(text: string) -> string`
 - `Add(a: int, b: int) -> int`
+- `ListResources() -> string` — lists all available MCP resources
+- `GetResource(uri: string) -> string` — retrieves content of a resource by URI
+
+## MCP prompts exposed
+
+The official MCP middleware discovers prompts from `src/Core/McpPrompts.fs`:
+
+- `Greeting(name: string) -> GetPromptResult` — a friendly greeting prompt
+- `CodeReview(code: string) -> GetPromptResult` — a code review prompt
+
+## MCP resources exposed
+
+The official MCP middleware discovers resources from `src/Core/McpResources.fs`:
+
+- `info://server` (text/plain) — general server information
+- `data://sample` (application/json) — a sample JSON data object
 
 ## Tests
 
