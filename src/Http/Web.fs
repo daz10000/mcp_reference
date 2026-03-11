@@ -146,6 +146,8 @@ if (sendBtn && promptEl) {
             .AddMcpServer()
             .WithHttpTransport()
             .WithToolsFromAssembly()
+            .WithPromptsFromAssembly()
+            .WithResourcesFromAssembly()
         |> ignore
 
         builder.Services.AddGiraffe() |> ignore

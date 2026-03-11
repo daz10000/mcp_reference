@@ -21,5 +21,6 @@
     <Compile Include="SampleTest.fs" />
     <Compile Include="McpTypedTests.fs" />
     <Compile Include="McpMiddlewareTests.fs" />
+    <Compile Include="McpPromptsAndResourcesTests.fs" />
   </ItemGroup>
 </Project>

@@ -9,6 +9,8 @@
     <Compile Include="Core\Protocol.fs" />
     <Compile Include="Core\Echo.fs" />
     <Compile Include="Core\TypedTools.fs" />
+    <Compile Include="Core\McpPrompts.fs" />
+    <Compile Include="Core\McpResources.fs" />
     <Compile Include="Core\McpTools.fs" />
     <Compile Include="Core\Registry.fs" />
     <Compile Include="Http\Hubs\SignalRHub.fs" />
