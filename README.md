@@ -16,6 +16,7 @@ Reference MCP server implemented in F# on ASP.NET Core with:
 ## Quick start
 
 ```powershell
+dotnet tool restore
 dotnet restore src/mcp_reference.fsproj
 dotnet build src/mcp_reference.fsproj -c Debug
 dotnet run --project src/mcp_reference.fsproj
@@ -69,6 +70,7 @@ The official MCP middleware discovers resources from `src/Core/McpResources.fs`:
 ## Tests
 
 ```powershell
+dotnet tool restore
 dotnet test tests/mcp_reference.Tests.fsproj -c Debug
 ```
 
