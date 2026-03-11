@@ -25,6 +25,13 @@ module Web =
         .u { background: #e8f1ff; }
         .a { background: #f1f5f3; }
         .t { background: #fff7e6; font-size: 13px; }
+        .tool-call { border: 1px solid #f0d9a6; border-radius: 8px; padding: 8px 10px; margin-top: 8px; background: #fffdf7; }
+        .tool-summary { font-weight: 600; cursor: pointer; }
+        .tool-subtitle { color: #6b5b2e; margin-top: 6px; margin-bottom: 4px; font-size: 12px; }
+        .tool-json { margin: 0; white-space: pre-wrap; word-break: break-word; background: #fff; border: 1px solid #eee; border-radius: 6px; padding: 8px; }
+        .tool-actions { margin-top: 8px; display: flex; gap: 8px; align-items: center; }
+        .tool-copy-btn { padding: 4px 8px; font-size: 12px; cursor: pointer; }
+        .tool-copy-status { font-size: 12px; color: #5d4c20; }
         .row { margin-top: 12px; display: flex; gap: 8px; }
         textarea { flex: 1; min-height: 70px; padding: 10px; }
         button { padding: 10px 14px; }
@@ -54,6 +61,111 @@ function append(cls, text) {
     log.scrollTop = log.scrollHeight;
 }
 
+function truncateString(value, maxLen) {
+    if (typeof value !== 'string') return value;
+    if (value.length <= maxLen) return value;
+    return value.slice(0, maxLen) + '… (' + value.length + ' chars)';
+}
+
+function truncateJsonStrings(value, maxLen) {
+    if (typeof value === 'string') {
+        return truncateString(value, maxLen);
+    }
+
+    if (Array.isArray(value)) {
+        return value.map(item => truncateJsonStrings(item, maxLen));
+    }
+
+    if (value && typeof value === 'object') {
+        const result = {};
+        for (const [k, v] of Object.entries(value)) {
+            result[k] = truncateJsonStrings(v, maxLen);
+        }
+        return result;
+    }
+
+    return value;
+}
+
+function parseToolArguments(raw) {
+    if (typeof raw !== 'string' || raw.trim() === '') {
+        return null;
+    }
+
+    try {
+        return JSON.parse(raw);
+    } catch {
+        return null;
+    }
+}
+
+function renderToolCalls(toolCalls) {
+    const container = document.createElement('div');
+    container.className = 'msg t';
+
+    for (const t of toolCalls) {
+        const block = document.createElement('div');
+        block.className = 'tool-call';
+
+        const details = document.createElement('details');
+        const summary = document.createElement('summary');
+        summary.className = 'tool-summary';
+        summary.textContent = 'Tool call: ' + (t.name || 'unknown');
+        details.appendChild(summary);
+
+        const subtitle = document.createElement('div');
+        subtitle.className = 'tool-subtitle';
+        subtitle.textContent = 'Submitted arguments';
+        details.appendChild(subtitle);
+
+        const pre = document.createElement('pre');
+        pre.className = 'tool-json';
+
+        const parsedArgs = parseToolArguments(t.arguments);
+        let fullArgsText = '';
+        if (parsedArgs !== null) {
+            const truncated = truncateJsonStrings(parsedArgs, 240);
+            pre.textContent = JSON.stringify(truncated, null, 2);
+            fullArgsText = JSON.stringify(parsedArgs, null, 2);
+        } else {
+            fullArgsText = String(t.arguments || '');
+            pre.textContent = truncateString(fullArgsText, 600);
+        }
+
+        const actions = document.createElement('div');
+        actions.className = 'tool-actions';
+
+        const copyBtn = document.createElement('button');
+        copyBtn.type = 'button';
+        copyBtn.className = 'tool-copy-btn';
+        copyBtn.textContent = 'Copy full args';
+
+        const copyStatus = document.createElement('span');
+        copyStatus.className = 'tool-copy-status';
+
+        copyBtn.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(fullArgsText);
+                copyStatus.textContent = 'Copied';
+            } catch {
+                copyStatus.textContent = 'Copy failed';
+            }
+            setTimeout(() => { copyStatus.textContent = ''; }, 1500);
+        });
+
+        actions.appendChild(copyBtn);
+        actions.appendChild(copyStatus);
+
+        details.appendChild(pre);
+        details.appendChild(actions);
+        block.appendChild(details);
+        container.appendChild(block);
+    }
+
+    log.appendChild(container);
+    log.scrollTop = log.scrollHeight;
+}
+
 async function send() {
     const prompt = promptEl.value.trim();
     if (!prompt) return;
@@ -72,8 +184,7 @@ async function send() {
         history.push({ role: 'user', content: prompt });
         history.push({ role: 'assistant', content: reply });
         if (Array.isArray(data.toolCalls) && data.toolCalls.length > 0) {
-            const called = data.toolCalls.map(t => t.name).join(', ');
-            append('t', 'Tools called: ' + called);
+            renderToolCalls(data.toolCalls);
         }
     } catch (e) {
         append('a', 'Assistant: Request failed.');
