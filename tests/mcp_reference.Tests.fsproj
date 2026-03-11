@@ -1,16 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="NUnit" Version="3.13.3" />
-    <PackageReference Include="NUnit3TestAdapter" Version="4.3.1" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.9.0" />
-    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="7.0.0" />
-  </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\src\mcp_reference.fsproj" />
   </ItemGroup>
@@ -22,4 +15,5 @@
     <Compile Include="McpTypedTests.fs" />
     <Compile Include="McpMiddlewareTests.fs" />
   </ItemGroup>
+  <Import Project="..\.paket\Paket.Restore.targets" />
 </Project>

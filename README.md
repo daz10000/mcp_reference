@@ -76,5 +76,7 @@ Expected: tool list includes `Echo` and `Add`.
 
 ## Notes on dependencies
 
-- NuGet references are in `src/mcp_reference.fsproj`
-- Paket references are in `paket.dependencies` and `src/paket.references`
+- All package dependencies are managed by Paket
+- Top-level packages and versions are declared in `paket.dependencies`
+- Per-project package references are listed in `src/paket.references` and `tests/paket.references`
+- The resolved dependency graph is locked in `paket.lock`
