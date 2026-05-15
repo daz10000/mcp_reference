@@ -1,0 +1,36 @@
+{
+  "manifest_version": "0.3",
+  "name": "EDIT this - XXX mcp proxy",
+  "display_name": "EDIT THIS - your product name",
+  "version": "1.0.7",
+  "description": "EDIT THIS .. Wraps a remote MCP streaming HTTP endpoint using local stdio via mcp-remote.",
+  "author": {
+    "name": "daz"
+  },
+  "server": {
+    "type": "node",
+    "entry_point": "node_modules/mcp-remote/dist/proxy.js",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/node_modules/mcp-remote/dist/proxy.js",
+        "EDIT THIS .. http://xxx.xxx.xxx.xxx:5000/mcp",
+        "--transport",
+        "http-only",
+        "--allow-http"
+      ]
+    }
+  },
+  "tools_generated": true,
+  "compatibility": {
+    "claude_desktop": ">=1.0.0",
+    "platforms": [
+      "win32",
+      "darwin",
+      "linux"
+    ],
+    "runtimes": {
+      "node": ">=18.0.0"
+    }
+  }
+}
