@@ -94,7 +94,5 @@ Expected: tool list includes `Echo` and `Add`.
 
 ## Notes on dependencies
 
-- All package dependencies are managed by Paket
-- Top-level packages and versions are declared in `paket.dependencies`
-- Per-project package references are listed in `src/paket.references` and `tests/paket.references`
-- The resolved dependency graph is locked in `paket.lock`
+- Package versions are managed centrally via NuGet Central Package Management in `Directory.Packages.props`
+- Project files reference packages by name only; versions come from that file

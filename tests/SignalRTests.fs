@@ -32,12 +32,12 @@ module SignalRTests =
 
             // Call KeepAlive
             let! keep = conn.InvokeAsync<string>("KeepAlive")
-            Assert.AreEqual("OK", keep)
+            Assert.That(keep, Is.EqualTo("OK"))
 
             // Call CallEcho with a Message
             let msg = { Id = 123; Text = "ping" }
             let! echoed = conn.InvokeAsync<Message>("CallEcho", msg)
-            Assert.IsTrue(echoed.Text.StartsWith("Echo: "))
+            Assert.That(echoed.Text.StartsWith("Echo: "), Is.True)
 
             do! conn.StopAsync()
             do! app.StopAsync()

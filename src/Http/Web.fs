@@ -261,6 +261,9 @@ if (sendBtn && promptEl) {
             .WithResourcesFromAssembly()
         |> ignore
 
+        // Giraffe 8 binds JSON with System.Text.Json, which is case-sensitive by default
+        builder.Services.AddSingleton<Json.ISerializer>(
+            Json.Serializer(System.Text.Json.JsonSerializerOptions(PropertyNameCaseInsensitive = true))) |> ignore
         builder.Services.AddGiraffe() |> ignore
         builder.Services.AddCors(fun options -> options.AddDefaultPolicy(fun policy -> policy.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin() |> ignore) |> ignore) |> ignore
         builder.Services.AddSignalR() |> ignore

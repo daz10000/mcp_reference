@@ -27,7 +27,7 @@ module McpMiddlewareTests =
             use content = new StringContent(probeBody, Encoding.UTF8, "application/json")
             let! resp = client.PostAsync("/mcp", content)
 
-            Assert.AreNotEqual(HttpStatusCode.NotFound, resp.StatusCode)
+            Assert.That(resp.StatusCode, Is.Not.EqualTo(HttpStatusCode.NotFound))
 
             do! app.StopAsync()
             do! runTask
@@ -51,7 +51,7 @@ module McpMiddlewareTests =
             use content = new StringContent(probeBody, Encoding.UTF8, "application/json")
             let! resp = client.PostAsync("/mcp", content)
 
-            Assert.AreNotEqual(HttpStatusCode.NotFound, resp.StatusCode)
+            Assert.That(resp.StatusCode, Is.Not.EqualTo(HttpStatusCode.NotFound))
 
             do! app.StopAsync()
             do! runTask
@@ -75,7 +75,7 @@ module McpMiddlewareTests =
             use content = new StringContent(probeBody, Encoding.UTF8, "application/json")
             let! resp = client.PostAsync("/mcp", content)
 
-            Assert.AreNotEqual(HttpStatusCode.NotFound, resp.StatusCode)
+            Assert.That(resp.StatusCode, Is.Not.EqualTo(HttpStatusCode.NotFound))
 
             do! app.StopAsync()
             do! runTask
