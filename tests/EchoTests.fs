@@ -12,7 +12,7 @@ module EchoTests =
     let ``Echo.echo prepends Echo:`` () =
         let msg = { Id = 42; Text = "ping" }
         let echoed = Echo.echo msg
-        Assert.IsTrue(echoed.Text.StartsWith("Echo: "))
+        Assert.That(echoed.Text.StartsWith("Echo: "), Is.True)
 
     [<Test>]
     let ``Registry Echo accepts lowercase text property`` () =
@@ -21,5 +21,5 @@ module EchoTests =
         let result = Registry.tryInvoke "Echo" (box doc.RootElement)
 
         match result with
-        | Some (:? Message as m) -> Assert.AreEqual("Echo: wow", m.Text)
+        | Some (:? Message as m) -> Assert.That(m.Text, Is.EqualTo("Echo: wow"))
         | _ -> Assert.Fail("Expected Echo tool to return Message with echoed text")

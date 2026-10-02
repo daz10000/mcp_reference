@@ -22,7 +22,7 @@ module HttpIntegrationTests =
             use client = new HttpClient()
             client.BaseAddress <- System.Uri(sprintf "http://127.0.0.1:%d" port)
             let! response = client.GetAsync("/")
-            Assert.IsTrue(response.IsSuccessStatusCode)
+            Assert.That(response.IsSuccessStatusCode, Is.True)
 
             do! app.StopAsync()
             do! runTask

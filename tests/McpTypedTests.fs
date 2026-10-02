@@ -28,7 +28,7 @@ module McpTypedTests =
             use content = new StringContent(json, Encoding.UTF8, "application/json")
             let! resp = client.PostAsync("/mcp/echo", content)
             let! body = resp.Content.ReadAsStringAsync()
-            Assert.IsTrue(body.Contains("Echo: hello typed"))
+            Assert.That(body, Does.Contain("Echo: hello typed"))
 
             do! app.StopAsync()
             do! runTask
@@ -53,7 +53,7 @@ module McpTypedTests =
             use content = new StringContent(json, Encoding.UTF8, "application/json")
             let! resp = client.PostAsync("/mcp/add", content)
             let! body = resp.Content.ReadAsStringAsync()
-            Assert.IsTrue(body.Contains("result: 12"))
+            Assert.That(body.Contains("result: 12"), Is.True)
 
             do! app.StopAsync()
             do! runTask
